@@ -1,0 +1,23 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.31424.327
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{888888A0-9F3D-457C-B088-3A5042F75D52}") = "PCReDive_Hatsune", "PCReDive_Hatsune\PCReDive_Hatsune.pyproj", "{EADC318A-3731-4303-A5C8-80D8AE9B37F6}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{EADC318A-3731-4303-A5C8-80D8AE9B37F6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EADC318A-3731-4303-A5C8-80D8AE9B37F6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {DC9E9B1C-055F-4B8C-A967-5EEAA4998739}
+	EndGlobalSection
+EndGlobal
