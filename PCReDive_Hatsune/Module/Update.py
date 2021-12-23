@@ -34,8 +34,8 @@ async def UpdateEmbed(connection, message, server_id): # 更新刀表
     if action_channel_id:
       embed_msg = Embed(title='當前狀態', color=0xD98B99)
       # 當前狀態，印出now_week與now_week+1
+      need_update_now_week = True # 是否刷新重跑
       for i in range(now_week, now_week + 2):
-        need_update_now_week = True # 如果五隻王都死，now_week += 1
         week_stage = Module.week_stage.week_stage(i)
         week_msg = ''
         for j in range(1,6):  
@@ -66,7 +66,7 @@ async def UpdateEmbed(connection, message, server_id): # 更新刀表
             if row[4]:
               real_damage = int(row[4])
 
-            if real_damage > Module.define_value.BOSS_HP[week_stage][j-1]: # 王死
+            if real_damage >= Module.define_value.BOSS_HP[week_stage][j-1]: # 王死
               title_msg = '**' + str(j) + '**王(**0**/**' + str(Module.define_value.BOSS_HP[week_stage][j-1]) +'**)\n'
               kinfe_msg = '　(已討伐)\n'
             else:
@@ -111,6 +111,8 @@ async def UpdateEmbed(connection, message, server_id): # 更新刀表
         index_boss = 1
         embed_msg.add_field(name='\u200b', value='-   -   -   -   -   -   -   -   ', inline=False)
         embed_msg.add_field(name='第' + str(i) + '週目', value=week_msg , inline=False)
+        if need_update_now_week:
+          break; # 如果五隻王都死，強制結束
             
   
       if need_update_now_week: #更新now_week 重跑一次

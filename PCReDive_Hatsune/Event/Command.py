@@ -156,6 +156,7 @@ async def on_message(message):
             connection.commit() # 資料庫存檔
             connection.close
 
+
             # 列出成員名單
             if legal_members == '':
               if illegal_members == '':
@@ -167,14 +168,14 @@ async def on_message(message):
                 await message.channel.send('新增下列人員:\n' + legal_members )
               else:
                 await message.channel.send('下列人員已存在:\n' + illegal_members + '\n新增下列人員' + legal_members )
-
+            await Module.report_update.report_update(message, message.guild.id)
             await Module.DB_control.CloseConnection(connection, message)
         else:
           await message.channel.send('!add_member [成員1] [成員2] ... [成員n]')
         connection = await Module.DB_control.OpenConnection(message)
 
-      #!e [week] [boss] [method]  0 = normal  1 = addtional
-      elif tokens[0] == '!e': # enter
+      #!1 [week] [boss] [method]  0 = normal  1 = addtional
+      elif tokens[0] == '!1': # enter
         connection = await Module.DB_control.OpenConnection(message)
         if connection:
           cursor = connection.cursor(prepared=True)
@@ -227,13 +228,13 @@ async def on_message(message):
               else:
                 await message.channel.send('[週目] [boss] [0.正刀/1.補償刀]請使用阿拉伯數字!')
             else:
-              await message.channel.send('格式錯誤，應為:\n!e [週目] [boss] [0.正刀/1.補償刀]')
+              await message.channel.send('格式錯誤，應為:\n!1 [週目] [boss] [0.正刀/1.補償刀]')
           else:
             pass #非指定頻道 不反應
           await Module.DB_control.CloseConnection(connection, message)
 
-      #!w [剩餘秒數] [damage] [comment]
-      elif tokens[0] == '!w': # enter
+      #!2 [剩餘秒數] [damage] [comment]
+      elif tokens[0] == '!2': # enter
         connection = await Module.DB_control.OpenConnection(message)
         if connection:
           cursor = connection.cursor(prepared=True)
@@ -276,15 +277,15 @@ async def on_message(message):
                 else:
                   await message.channel.send('請先進刀!')
               else:
-                await message.channel.send('類型錯誤，0:正刀、1:補償刀。')
+                await message.channel.send('[剩餘秒數] [damage]只能為阿拉伯數字')
             else:
-              await message.channel.send('格式錯誤，應為:\n!e [週目] [boss]')
+              await message.channel.send('格式錯誤，應為:\n!2 [剩餘秒數] [damage] [comment]')
           else:
             pass #非指定頻道 不反應
           await Module.DB_control.CloseConnection(connection, message)
 
-      #!f [實際造成傷害]
-      elif tokens[0] == '!f': # enter
+      #!3 [實際造成傷害]
+      elif tokens[0] == '!3': # enter
         connection = await Module.DB_control.OpenConnection(message)
         if connection:
           cursor = connection.cursor(prepared=True)
@@ -300,7 +301,7 @@ async def on_message(message):
 
                 type_description = ''
                 cursor = connection.cursor(prepared=True)
-                sql = "SELECT type, boss, week FROM princess_connect_hatsune.knifes WHERE server_id=? and member_id=? AND ( type = ? or type = ? ) limit 0, 1"
+                sql = "SELECT type, week, boss FROM princess_connect_hatsune.knifes WHERE server_id=? and member_id=? AND ( type = ? or type = ? ) limit 0, 1"
                 data = (message.guild.id, message.author.id, Module.define_value.Knife_Type.NORMAL_WAIT.value, Module.define_value.Knife_Type.RESERVED_WAIT.value)
                 cursor.execute(sql, data) # 檢查是否有進刀
                 row = cursor.fetchone()
@@ -332,7 +333,7 @@ async def on_message(message):
               else:
                 await message.channel.send('類型錯誤，0:沒領到補償刀、1:有領到補償刀。')
             else:
-              await message.channel.send('格式錯誤，應為:\n!f [實際造成傷害]')
+              await message.channel.send('格式錯誤，應為:\n!3 [實際造成傷害]')
           else:
             pass #非指定頻道 不反應
           await Module.DB_control.CloseConnection(connection, message)
@@ -366,7 +367,7 @@ async def on_message(message):
               else:
                 await message.channel.send('[週目] [boss]請使用阿拉伯數字!')
             else:
-              await message.channel.send('格式錯誤，應為:\n!e [週目] [boss]')
+              await message.channel.send('格式錯誤，應為:\n!r [週目] [boss]')
           else:
             pass #非指定頻道 不反應
           await Module.DB_control.CloseConnection(connection, message)
@@ -454,18 +455,26 @@ async def on_message(message):
           row = cursor.fetchone()
           cursor.close
           if row:
-            # 修改SL時間
-            closest_end_time = Module.get_closest_end_time.get_closest_day_end(datetime.datetime.now())
-            if row[0] < closest_end_time:
-              cursor = connection.cursor(prepared=True)
-              sql = "update princess_connect_hatsune.members SET sl_time=? WHERE server_id = ? and member_id = ?"
-              data = (closest_end_time, message.guild.id, group_serial, message.author.id)
-              cursor.execute(sql, data)
-              connection.commit()
-              await message.channel.send('紀錄完成!')
-              await Module.report_update.report_update(message, message.guild.id)
+            cursor = connection.cursor(prepared=True)
+            sql = "SELECT sl_time FROM princess_connect_hatsune.members WHERE server_id=? AND member_id=? limit 0, 1"
+            data = (message.guild.id, message.author.id)
+            cursor.execute(sql, data) # 認證身分
+            row = cursor.fetchone()
+            if row:
+              # 修改SL時間
+              closest_end_time = Module.get_closest_end_time.get_closest_day_end(datetime.datetime.now())
+              if row[0] < closest_end_time:
+                cursor = connection.cursor(prepared=True)
+                sql = "update princess_connect_hatsune.members SET sl_time=? WHERE server_id = ? and member_id = ?"
+                data = (closest_end_time, message.guild.id, message.author.id)
+                cursor.execute(sql, data)
+                connection.commit()
+                await message.channel.send('紀錄完成!')
+                await Module.report_update.report_update(message, message.guild.id)
+              else:
+                await message.channel.send('注意，今日已使用過SL，請勿退出遊戲!')
             else:
-              await message.channel.send('注意，今日已使用過SL，請勿退出遊戲!')
+              await message.channel.send('你不在該戰隊中')
           else:
             pass # await message.channel.send('這裡不是報刀頻道喔，請在所屬戰隊報刀頻道使用!')
           await Module.DB_control.CloseConnection(connection, message)

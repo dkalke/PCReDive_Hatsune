@@ -39,7 +39,7 @@ BOSS_HP=[\
 
 for i in range(0,5):
   for j in range(0,5):
-    BOSS_HP[i][j] = BOSS_HP[i][j]*1000
+    BOSS_HP[i][j] = BOSS_HP[i][j]*10000
 
 # 戰隊戰日期
 this_year = 2021
