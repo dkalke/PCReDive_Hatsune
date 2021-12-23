@@ -21,7 +21,26 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="Discord_client.py" />
+    <Compile Include="Event\Command.py" />
+    <Compile Include="Event\Ready.py" />
+    <Compile Include="Event\__init__.py" />
+    <Compile Include="Module\auto_clear.py" />
+    <Compile Include="Module\check_boss.py" />
+    <Compile Include="Module\DB_control.py" />
+    <Compile Include="Module\define_value.py" />
+    <Compile Include="Module\full_string_to_half_and_lower.py" />
+    <Compile Include="Module\get_closest_end_time.py" />
+    <Compile Include="Module\report_update.py" />
+    <Compile Include="Module\Update.py" />
+    <Compile Include="Module\week_stage.py" />
+    <Compile Include="Module\__init__.py" />
+    <Compile Include="Name_manager.py" />
     <Compile Include="PCReDive_Hatsune.py" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Event\" />
+    <Folder Include="Module\" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in
