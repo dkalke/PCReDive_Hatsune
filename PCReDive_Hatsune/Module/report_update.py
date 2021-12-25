@@ -6,6 +6,7 @@ import Name_manager
 import Module.DB_control
 import Module.define_value
 import Module.get_closest_end_time
+import Module.half_string_to_full
 
 async def report_update(message ,server_id):
   # 取得資訊訊息物件
@@ -49,43 +50,37 @@ async def report_update(message ,server_id):
         cursor = connection.cursor(prepared=True)
         # 抓出正刀
         sql = "\
-          SELECT member_id, sl_time , \
+          SELECT member_id, sl_time , knife_limit,\
           (SELECT COUNT(*) FROM princess_connect_hatsune.knifes k WHERE k.member_id = m.member_id AND k.`type` = ? AND k.update_time > ? AND k.update_time < ? ) AS normal_times, \
-          (SELECT COUNT(*) FROM princess_connect_hatsune.knifes k WHERE k.member_id = m.member_id AND k.`type` = ? AND k.update_time > ? AND k.update_time < ? ) AS addtional_times, \
           (SELECT COUNT(*) FROM princess_connect_hatsune.knifes k WHERE k.member_id = m.member_id AND k.`type` = ? AND k.update_time > ? AND k.update_time < ? ) AS revered_times \
           FROM princess_connect_hatsune.members m \
           WHERE server_id = ? \
           ORDER BY m.member_id"
         data = (Module.define_value.Knife_Type.NORMAL.value, start_time, end_time, 
-                Module.define_value.Knife_Type.ADDITIONAL.value, start_time, end_time, 
                 Module.define_value.Knife_Type.RESERVED.value, start_time, end_time, 
                 server_id)
         cursor.execute(sql, data)
         row = cursor.fetchone()
         msg = ''
         normal_total = 0
-        additional_total = 0
         reversed_total = 0
         count = 1
         while row:
           member_id=row[0]
           sl_time=row[1]
-          normal_times = row[2]
-          addtional_times = row[3]
+          knife_limit = row[2]
+          normal_times = row[3]
           revered_times = row[4]
 
           # 是否有SL?
           if sl_time >= end_time:
-            sl_time = '[閃退已用] '
+            sl_time = 'Y'
           else:
-            sl_time = '[閃退未用] '
-
+            sl_time = 'N'
             
           member_name = await Name_manager.get_nick_name(message, member_id)
-          msg = msg + '{' + str(count) + '} ' + sl_time + member_name + '\n'
-          msg = msg+ '　' + '正刀已出' + str(normal_times) + '刀、補償已出' + str(addtional_times) + '刀、補償還剩' + str(revered_times) + '刀' + '\n'
+          msg = msg + '（{}）　{}正{}補　{}　{}\n'.format(Module.half_string_to_full.half_string_to_full('{:>02d}'.format(count)), Module.half_string_to_full.half_string_to_full(str(knife_limit - normal_times)), Module.half_string_to_full.half_string_to_full(str(revered_times)),Module.half_string_to_full.half_string_to_full(sl_time), member_name) 
           normal_total = normal_total + normal_times
-          additional_total = additional_total + addtional_times
           reversed_total = reversed_total + revered_times
           count = count + 1
           row = cursor.fetchone()
@@ -95,8 +90,8 @@ async def report_update(message ,server_id):
         if msg == '':
           msg = '尚無成員資訊!'
         else:
-          msg = msg + '{合計}\n'
-          msg = msg+ '　' + '正刀已出' + str(normal_total) + '刀、補償已出' + str(additional_total) + '刀、補償還剩' + str(reversed_total) + '刀' + '\n'
+          msg = '（序號）　剩餘刀數　Ｒ　名稱\n-------------------------------------------\n' + msg + '-------------------------------------------\n'
+          msg = msg + '（總計）　{}正{}補'.format(Module.half_string_to_full.half_string_to_full(str(normal_total)), Module.half_string_to_full.half_string_to_full(str(reversed_total)))
 
         embed_msg.add_field(name='\u200b', value=msg , inline=False)
 

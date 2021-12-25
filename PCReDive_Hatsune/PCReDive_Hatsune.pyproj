@@ -31,6 +31,7 @@
     <Compile Include="Module\check_week.py" />
     <Compile Include="Module\DB_control.py" />
     <Compile Include="Module\define_value.py" />
+    <Compile Include="Module\half_string_to_full.py" />
     <Compile Include="Module\full_string_to_half_and_lower.py" />
     <Compile Include="Module\get_closest_end_time.py" />
     <Compile Include="Module\report_update.py" />
