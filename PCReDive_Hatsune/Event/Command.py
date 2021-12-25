@@ -516,7 +516,7 @@ async def on_message(message):
             pass #非指定頻道 不反應
           await Module.DB_control.CloseConnection(connection, message)
 
-      #!cc 取消補償(也就是退刀)
+      #!cc 取消補償 [序號]
       elif tokens[0] == '!cc': 
         connection = await Module.DB_control.OpenConnection(message)
         if connection:
@@ -527,28 +527,36 @@ async def on_message(message):
           row = cursor.fetchone()
           cursor.close
           if row:
-            if len(tokens) == 1: 
-              cursor = connection.cursor(prepared=True)
-              sql = "SELECT type, week, boss, serial_number FROM princess_connect_hatsune.knifes WHERE server_id=? and member_id=? AND (type = ?) order by serial_number LIMIT 0, 1"
-              data = (message.guild.id, message.author.id, Module.define_value.Knife_Type.RESERVED.value)
-              cursor.execute(sql, data) # 檢查是否有進刀
-              row = cursor.fetchone()
-              cursor.close
-              if row:
-                # 刪除
+            if len(tokens) == 2: 
+              if tokens[1].isdigit():
+                index = int(tokens[1]) - 1 # SQL由0開始
+                # 檢查該刀有無在表中
                 cursor = connection.cursor(prepared=True)
-                sql = "DELETE FROM princess_connect_hatsune.knifes WHERE serial_number=?"
-                data = (row[3],)
+                sql = "SELECT serial_number, member_id FROM princess_connect_hatsune.knifes WHERE server_id=? AND type = ? order by serial_number LIMIT ?, 1"
+                data = (message.guild.id, Module.define_value.Knife_Type.RESERVED.value, index)
                 cursor.execute(sql, data)
+                row = cursor.fetchone()
                 cursor.close
-                connection.commit()
-                await message.channel.send('最上方的補償紀錄已取消!')
-                await Module.Update.Update(message, message.guild.id) # 更新刀表  
-                await Module.report_update.report_update(message, message.guild.id)
+                if row:
+                  if row[1] == message.author.id:
+                    # 刪除
+                    cursor = connection.cursor(prepared=True)
+                    sql = "DELETE FROM princess_connect_hatsune.knifes WHERE serial_number=?"
+                    data = (row[0],)
+                    cursor.execute(sql, data)
+                    cursor.close
+                    connection.commit()
+                    await message.channel.send('序號{}，補償刀紀錄已移除!'.format(index + 1)) # 給使用者看要加回來
+                    await Module.Update.Update(message, message.guild.id) # 更新刀表  
+                    await Module.report_update.report_update(message, message.guild.id)
+                  else:
+                    await message.channel.send('您非該刀主人喔')
+                else:
+                  await message.channel.send('查無該序號紀錄')
               else:
-                await message.channel.send('查無登記補償的紀錄')
+                await message.channel.send('[序號] 僅能使用阿拉伯數字')
             else:
-              await message.channel.send('格式錯誤，應為:\n!cc')
+              await message.channel.send('格式錯誤，應為:\n!cc [序號]')
           else:
             pass #非指定頻道 不反應
           await Module.DB_control.CloseConnection(connection, message)
