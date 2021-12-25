@@ -264,7 +264,7 @@ async def on_message(message):
                   
                 if not type == None:
                   if Module.check_week.Check_week(main_week, week):
-                    if Module.check_boss.Check_boss(boss):
+                    if Module.check_boss.Check_boss(connection, message, message.guild.id, week, boss):
                       if type == Module.define_value.Knife_Type.RESERVED_ENTER.value or await Module.check_knife_limit.check_knife_limit(connection, message, message.guild.id, message.author.id):
                         cursor = connection.cursor(prepared=True)
                         sql = "SELECT type FROM princess_connect_hatsune.knifes WHERE server_id=? and member_id=? AND (type = ? or type = ? or type = ? or type = ?) limit 0, 1"
@@ -374,27 +374,30 @@ async def on_message(message):
                 row = cursor.fetchone()
                 cursor.close
                 if row:
-                  type_description = None
-                  type = None
-                  insert_reversed_knife = False
-                  if int(row[0])== Module.define_value.Knife_Type.NORMAL_WAIT.value:
-                    type_description = '正刀'
-                    type = Module.define_value.Knife_Type.NORMAL.value
-                  else:
-                    type_description = '補償刀'
-                    type = Module.define_value.Knife_Type.ADDITIONAL.value
+                  if Module.check_boss.Check_boss(connection, message, message.guild.id, week, boss):
+                    type_description = None
+                    type = None
+                    insert_reversed_knife = False
+                    if int(row[0])== Module.define_value.Knife_Type.NORMAL_WAIT.value:
+                      type_description = '正刀'
+                      type = Module.define_value.Knife_Type.NORMAL.value
+                    else:
+                      type_description = '補償刀'
+                      type = Module.define_value.Knife_Type.ADDITIONAL.value
 
-                  # 更新狀態
-                  cursor = connection.cursor(prepared=True)
-                  sql = "update princess_connect_hatsune.knifes set type=?, damage=? WHERE server_id=? and member_id=? AND ( type = ? or type = ? )"
-                  data = ( int(row[0]) + 2, damage, message.guild.id, message.author.id, Module.define_value.Knife_Type.NORMAL_WAIT.value, Module.define_value.Knife_Type.RESERVED_WAIT.value)
-                  cursor.execute(sql, data)
-                  cursor.close
-                  connection.commit() # 資料庫存檔
+                    # 更新狀態
+                    cursor = connection.cursor(prepared=True)
+                    sql = "update princess_connect_hatsune.knifes set type=?, damage=? WHERE server_id=? and member_id=? AND ( type = ? or type = ? )"
+                    data = ( int(row[0]) + 2, damage, message.guild.id, message.author.id, Module.define_value.Knife_Type.NORMAL_WAIT.value, Module.define_value.Knife_Type.RESERVED_WAIT.value)
+                    cursor.execute(sql, data)
+                    cursor.close
+                    connection.commit() # 資料庫存檔
                   
-                  await message.channel.send(str(row[1]) + '週' + str(row[2]) + '王，造成傷害' + str(damage) + '，已結算!')
-                  await Module.Update.Update(message, message.guild.id) # 更新刀表  
-                  await Module.report_update.report_update(message, message.guild.id)
+                    await message.channel.send(str(row[1]) + '週' + str(row[2]) + '王，造成傷害' + str(damage) + '，已結算!')
+                    await Module.Update.Update(message, message.guild.id) # 更新刀表  
+                    await Module.report_update.report_update(message, message.guild.id)
+                  else:
+                    await message.channel.send('該王已被擊殺，請使用!c退刀')
                 else:
                   await message.channel.send('請先卡秒!')
               else:
