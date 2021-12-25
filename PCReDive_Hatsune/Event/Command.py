@@ -123,6 +123,39 @@ async def on_message(message):
             await message.channel.send('尚未註冊')
           await Module.DB_control.CloseConnection(connection, message)
 
+      #!set_week [週目]
+      elif tokens[0] == '!set_week':
+        if len(tokens) == 2:
+          if tokens[1].isdigit():
+            week = int(tokens[1])
+            connection = await Module.DB_control.OpenConnection(message)
+            if connection:
+              # 尋找戰隊有無存在
+              cursor = connection.cursor(prepared=True)
+              sql = "select * from princess_connect_hatsune.group where server_id = ?"
+              data = (message.guild.id, )
+              cursor.execute(sql, data)
+              row = cursor.fetchone()
+              cursor.close
+
+              if row: 
+                # 寫入資料庫
+                cursor = connection.cursor(prepared=True)
+                sql = "UPDATE princess_connect_hatsune.group SET now_week = ? WHERE server_id = ?"
+                data = (week, message.guild.id)
+                cursor.execute(sql, data)
+                cursor.close
+                connection.commit()
+                await message.channel.send('週目已設定至{}週'.format(week))
+                await Module.Update.Update(message, message.guild.id) # 更新活動表
+              else:
+                await message.channel.send('戰隊尚未註冊，請使用!init')
+              await Module.DB_control.CloseConnection(connection, message)
+          else:
+            await message.channel.send('[週目] 僅能使用阿拉伯數字')
+        else:
+          await message.channel.send('格式錯誤，應為:\n!set_week [週目]')
+
       #!add_member [成員1] [成員2] ...
       elif tokens[0] == '!add_member':
 
