@@ -12,15 +12,14 @@ import Module.full_string_to_half_and_lower
 import Module.DB_control
 
 import Name_manager
-#import Module.Authentication
 import Module.Update
 import Module.report_update
-#import Module.Offset_manager
 import Module.check_week
 import Module.check_boss
 import Module.define_value
 import Module.get_closest_end_time
 import Module.check_knife_limit
+import Module.find_out_sockpuppet
 
 
 @client.event
@@ -232,14 +231,14 @@ async def on_message(message):
                 illegal_members = illegal_members + member.mention + ' '
                     
             for member in del_member_list:
-              # 刪除報刀資訊
+              # 刪除報刀資訊(包含分身)
               cursor = connection.cursor(prepared=True)
               sql = "DELETE FROM princess_connect_hatsune.knifes WHERE server_id = ? AND member_id = ?"
               data = (message.guild.id, member.id)
               cursor.execute(sql, data)
               cursor.close
 
-              # 刪除成員資訊
+              # 刪除成員資訊(包含分身)
               cursor = connection.cursor(prepared=True)
               sql = "DELETE FROM princess_connect_hatsune.members WHERE server_id = ? AND member_id = ?"
               data = (message.guild.id, member.id)
@@ -441,27 +440,30 @@ async def on_message(message):
                 if not type == None:
                   if Module.check_week.Check_week(main_week, week):
                     if Module.check_boss.Check_boss(connection, message, message.guild.id, week, boss):
-                      if type == Module.define_value.Knife_Type.RESERVED_ENTER.value or await Module.check_knife_limit.check_knife_limit(connection, message, message.guild.id, message.author.id):
-                        cursor = connection.cursor(prepared=True)
-                        sql = "SELECT type FROM princess_connect_hatsune.knifes WHERE server_id=? and member_id=? AND (type = ? or type = ? or type = ? or type = ?) limit 0, 1"
-                        data = (message.guild.id, message.author.id, Module.define_value.Knife_Type.NORMAL_ENTER.value, Module.define_value.Knife_Type.RESERVED_ENTER.value, Module.define_value.Knife_Type.NORMAL_WAIT.value, Module.define_value.Knife_Type.RESERVED_WAIT.value)
-                        cursor.execute(sql, data) # 檢查是否有進刀
-                        row = cursor.fetchone()
-                        cursor.close
-                        if not row:
-                          # 新增刀
+                      sockpuppet = await Module.find_out_sockpuppet.find_out_sockpuppet(connection, message) # 找分身
+                      if sockpuppet != None:
+                        if type == Module.define_value.Knife_Type.RESERVED_ENTER.value or await Module.check_knife_limit.check_knife_limit(connection, message, message.guild.id, message.author.id, sockpuppet):
                           cursor = connection.cursor(prepared=True)
-                          sql = "INSERT INTO princess_connect_hatsune.knifes (server_id, member_id, type, week, boss) VALUES (?, ?, ?, ?, ?)"
-                          data = (message.guild.id, message.author.id, type ,week, boss)
-                          cursor.execute(sql, data)
+                          sql = "SELECT type FROM princess_connect_hatsune.knifes WHERE server_id=? and member_id=? AND (type = ? or type = ? or type = ? or type = ?) AND sockpuppet = ? limit 0, 1"
+                          data = (message.guild.id, message.author.id, Module.define_value.Knife_Type.NORMAL_ENTER.value, Module.define_value.Knife_Type.RESERVED_ENTER.value, Module.define_value.Knife_Type.NORMAL_WAIT.value, Module.define_value.Knife_Type.RESERVED_WAIT.value, sockpuppet)
+                          cursor.execute(sql, data) # 檢查是否有進刀
+                          row = cursor.fetchone()
                           cursor.close
-                          connection.commit()
-                          await message.channel.send('第' + str(week) + '週目' + str(boss) + '王，' + type_description + '已進刀!')
-                          await Module.Update.Update(message, message.guild.id) # 更新刀表  
+                          if not row:
+                            # 新增刀
+                            cursor = connection.cursor(prepared=True)
+                            sql = "INSERT INTO princess_connect_hatsune.knifes (server_id, member_id, type, week, boss, sockpuppet) VALUES (?, ?, ?, ?, ?, ?)"
+                            data = (message.guild.id, message.author.id, type ,week, boss, sockpuppet)
+                            cursor.execute(sql, data)
+                            cursor.close
+                            connection.commit()
+                            await message.channel.send('第' + str(week) + '週目' + str(boss) + '王，' + type_description + '已進刀!')
+                            await Module.Update.Update(message, message.guild.id) # 更新刀表  
+                          else:
+                            await message.channel.send('已有進刀紀錄，請完成該刀後再次嘗試!')
                         else:
-                          await message.channel.send('已有進刀紀錄，請完成該刀後再次嘗試!')
-                      else:
-                        await message.channel.send('已達今日出刀上限，感謝您的付出!')
+                          await message.channel.send('已達今日出刀上限，感謝您的付出!')
+
                     else:
                       await message.channel.send('該王不存在喔!')
                   else:
@@ -494,31 +496,42 @@ async def on_message(message):
                 comment = tokens[3]
                 type_description = ''
 
+                # 找分身
                 cursor = connection.cursor(prepared=True)
-                sql = "SELECT type FROM princess_connect_hatsune.knifes WHERE server_id=? and member_id=? AND ( type = ? or type = ? ) limit 0, 1"
-                data = (message.guild.id, message.author.id, Module.define_value.Knife_Type.NORMAL_ENTER.value, Module.define_value.Knife_Type.RESERVED_ENTER.value)
-                cursor.execute(sql, data) # 檢查是否有進刀
+                sql = "SELECT sockpuppet FROM princess_connect_hatsune.members WHERE server_id=? and member_id=? AND now_using = '1' limit 0, 1"
+                data = (message.guild.id, message.author.id)
+                cursor.execute(sql, data)
                 row = cursor.fetchone()
                 cursor.close
                 if row:
-                  # 更新狀態
+                  sockpuppet = int(row[0])
                   cursor = connection.cursor(prepared=True)
-                  sql = "update princess_connect_hatsune.knifes set type=?, reserved_time=?, damage=?, comment=?  WHERE server_id=? and member_id=? AND ( type = ? or type = ? )"
-                  data = ( int(row[0]) + 2, reserved_time, damage, comment, message.guild.id, message.author.id, Module.define_value.Knife_Type.NORMAL_ENTER.value, Module.define_value.Knife_Type.RESERVED_ENTER.value)
-                  cursor.execute(sql, data)
+                  sql = "SELECT type FROM princess_connect_hatsune.knifes WHERE server_id=? and member_id=? AND ( type = ? or type = ? ) AND sockpuppet = ? limit 0, 1"
+                  data = (message.guild.id, message.author.id, Module.define_value.Knife_Type.NORMAL_ENTER.value, Module.define_value.Knife_Type.RESERVED_ENTER.value, sockpuppet)
+                  cursor.execute(sql, data) # 檢查是否有進刀
+                  row = cursor.fetchone()
                   cursor.close
-                  connection.commit() # 資料庫存檔
+                  if row:
+                    # 更新狀態
+                    cursor = connection.cursor(prepared=True)
+                    sql = "update princess_connect_hatsune.knifes set type=?, reserved_time=?, damage=?, comment=?  WHERE server_id=? and member_id=? AND ( type = ? or type = ? ) AND sockpuppet = ?"
+                    data = ( int(row[0]) + 2, reserved_time, damage, comment, message.guild.id, message.author.id, Module.define_value.Knife_Type.NORMAL_ENTER.value, Module.define_value.Knife_Type.RESERVED_ENTER.value, sockpuppet)
+                    cursor.execute(sql, data)
+                    cursor.close
+                    connection.commit() # 資料庫存檔
 
-                  type_description = None
-                  if int(row[0])== Module.define_value.Knife_Type.NORMAL_ENTER.value:
-                    type_description = '正刀'
-                  else:
-                    type_description = '補償刀'
+                    type_description = None
+                    if int(row[0])== Module.define_value.Knife_Type.NORMAL_ENTER.value:
+                      type_description = '正刀'
+                    else:
+                      type_description = '補償刀'
                   
-                  await message.channel.send('剩餘秒數' + str(reserved_time) + '，目前傷害' + str(damage) + ','+ comment + ',' + type_description + '已卡好!')
-                  await Module.Update.Update(message, message.guild.id) # 更新刀表  
+                    await message.channel.send('剩餘秒數' + str(reserved_time) + '，目前傷害' + str(damage) + ','+ comment + ',' + type_description + '已卡好!')
+                    await Module.Update.Update(message, message.guild.id) # 更新刀表  
+                  else:
+                    await message.channel.send('請先進刀!')
                 else:
-                  await message.channel.send('請先進刀!')
+                  await message.channel.send('您不在該戰隊喔!')
               else:
                 await message.channel.send('[剩餘秒數] [damage]只能為阿拉伯數字')
             else:
@@ -542,40 +555,43 @@ async def on_message(message):
               if tokens[1].isdigit() :
                 damage = int(tokens[1])
 
-                type_description = ''
-                cursor = connection.cursor(prepared=True)
-                sql = "SELECT type, week, boss FROM princess_connect_hatsune.knifes WHERE server_id=? and member_id=? AND ( type = ? or type = ? ) limit 0, 1"
-                data = (message.guild.id, message.author.id, Module.define_value.Knife_Type.NORMAL_WAIT.value, Module.define_value.Knife_Type.RESERVED_WAIT.value)
-                cursor.execute(sql, data) # 檢查是否有進刀
-                row = cursor.fetchone()
-                cursor.close
-                if row:
-                  if Module.check_boss.Check_boss(connection, message, message.guild.id, row[1], row[2]):
-                    type_description = None
-                    type = None
-                    insert_reversed_knife = False
-                    if int(row[0])== Module.define_value.Knife_Type.NORMAL_WAIT.value:
-                      type_description = '正刀'
-                      type = Module.define_value.Knife_Type.NORMAL.value
-                    else:
-                      type_description = '補償刀'
-                      type = Module.define_value.Knife_Type.ADDITIONAL.value
+                sockpuppet = await Module.find_out_sockpuppet.find_out_sockpuppet(connection, message) # 找分身
+                if sockpuppet != None:
+                  type_description = ''
+                  cursor = connection.cursor(prepared=True)
+                  sql = "SELECT type, week, boss FROM princess_connect_hatsune.knifes WHERE server_id=? and member_id=? AND ( type = ? or type = ? ) AND sockpuppet = ? limit 0, 1"
+                  data = (message.guild.id, message.author.id, Module.define_value.Knife_Type.NORMAL_WAIT.value, Module.define_value.Knife_Type.RESERVED_WAIT.value, sockpuppet)
+                  cursor.execute(sql, data) # 檢查是否有進刀
+                  row = cursor.fetchone()
+                  cursor.close
+                  if row:
+                    if Module.check_boss.Check_boss(connection, message, message.guild.id, row[1], row[2]):
+                      type_description = None
+                      type = None
+                      insert_reversed_knife = False
+                      if int(row[0])== Module.define_value.Knife_Type.NORMAL_WAIT.value:
+                        type_description = '正刀'
+                        type = Module.define_value.Knife_Type.NORMAL.value
+                      else:
+                        type_description = '補償刀'
+                        type = Module.define_value.Knife_Type.ADDITIONAL.value
 
-                    # 更新狀態
-                    cursor = connection.cursor(prepared=True)
-                    sql = "update princess_connect_hatsune.knifes set type=?, damage=? WHERE server_id=? and member_id=? AND ( type = ? or type = ? )"
-                    data = ( int(row[0]) + 2, damage, message.guild.id, message.author.id, Module.define_value.Knife_Type.NORMAL_WAIT.value, Module.define_value.Knife_Type.RESERVED_WAIT.value)
-                    cursor.execute(sql, data)
-                    cursor.close
-                    connection.commit() # 資料庫存檔
+                      # 更新狀態
+                      cursor = connection.cursor(prepared=True)
+                      sql = "update princess_connect_hatsune.knifes set type=?, damage=? WHERE server_id=? and member_id=? AND ( type = ? or type = ? ) AND sockpuppet = ?"
+                      data = ( int(row[0]) + 2, damage, message.guild.id, message.author.id, Module.define_value.Knife_Type.NORMAL_WAIT.value, Module.define_value.Knife_Type.RESERVED_WAIT.value, sockpuppet)
+                      cursor.execute(sql, data)
+                      cursor.close
+                      connection.commit() # 資料庫存檔
                   
-                    await message.channel.send(str(row[1]) + '週' + str(row[2]) + '王，造成傷害' + str(damage) + '，已結算!')
-                    await Module.Update.Update(message, message.guild.id) # 更新刀表  
-                    await Module.report_update.report_update(message, message.guild.id)
+                      await message.channel.send(str(row[1]) + '週' + str(row[2]) + '王，造成傷害' + str(damage) + '，已結算!')
+                      await Module.Update.Update(message, message.guild.id) # 更新刀表  
+                      await Module.report_update.report_update(message, message.guild.id)
+                    else:
+                      await message.channel.send('該王已被擊殺，請使用!c退刀')
                   else:
-                    await message.channel.send('該王已被擊殺，請使用!c退刀')
-                else:
-                  await message.channel.send('請先卡秒!')
+                    await message.channel.send('請先卡秒!')
+
               else:
                 await message.channel.send('類型錯誤，0:沒領到補償刀、1:有領到補償刀。')
             else:
@@ -585,7 +601,7 @@ async def on_message(message):
           await Module.DB_control.CloseConnection(connection, message)
 
       #!r [秒數] [備註]
-      elif tokens[0] == '!r': #
+      elif tokens[0] == '!r':
         connection = await Module.DB_control.OpenConnection(message)
         if connection:
           cursor = connection.cursor(prepared=True)
@@ -600,16 +616,19 @@ async def on_message(message):
                 reserved_time = int(tokens[1])
                 comment = tokens[2]
 
-                # 新增刀
-                cursor = connection.cursor(prepared=True)
-                sql = "INSERT INTO princess_connect_hatsune.knifes (server_id, member_id, type, comment) VALUES (?, ?, ?, ?)"
-                data = (message.guild.id, message.author.id, Module.define_value.Knife_Type.RESERVED.value, comment)
-                cursor.execute(sql, data)
-                cursor.close
-                connection.commit()
-                await message.channel.send(str(reserved_time) +'秒補償，' + comment + '，已登記')
-                await Module.Update.Update(message, message.guild.id) # 更新刀表  
-                await Module.report_update.report_update(message, message.guild.id) # 更新報表
+                sockpuppet = await Module.find_out_sockpuppet.find_out_sockpuppet(connection, message) # 找分身
+                if sockpuppet != None:
+                  # 新增刀
+                  cursor = connection.cursor(prepared=True)
+                  sql = "INSERT INTO princess_connect_hatsune.knifes (server_id, member_id, type, comment, sockpuppet) VALUES (?, ?, ?, ?, ?)"
+                  data = (message.guild.id, message.author.id, Module.define_value.Knife_Type.RESERVED.value, comment, sockpuppet)
+                  cursor.execute(sql, data)
+                  cursor.close
+                  connection.commit()
+                  await message.channel.send(str(reserved_time) +'秒補償，' + comment + '，已登記')
+                  await Module.Update.Update(message, message.guild.id) # 更新刀表  
+                  await Module.report_update.report_update(message, message.guild.id) # 更新報表
+
               else:
                 await message.channel.send('[週目] [boss]請使用阿拉伯數字!')
             else:
@@ -630,23 +649,26 @@ async def on_message(message):
           cursor.close
           if row:
             if len(tokens) == 1: 
-              cursor = connection.cursor(prepared=True)
-              sql = "SELECT type, week, boss FROM princess_connect_hatsune.knifes WHERE server_id=? and member_id=? AND (type = ? or type = ? or type = ? or type = ?) limit 0, 1"
-              data = (message.guild.id, message.author.id, Module.define_value.Knife_Type.NORMAL_ENTER.value, Module.define_value.Knife_Type.RESERVED_ENTER.value, Module.define_value.Knife_Type.NORMAL_WAIT.value, Module.define_value.Knife_Type.RESERVED_WAIT.value)
-              cursor.execute(sql, data) # 檢查是否有進刀
-              row = cursor.fetchone()
-              cursor.close
-              if row:
-                # 刪除
+              sockpuppet = await Module.find_out_sockpuppet.find_out_sockpuppet(connection, message) # 找分身
+              if sockpuppet != None:
                 cursor = connection.cursor(prepared=True)
-                sql = "DELETE FROM princess_connect_hatsune.knifes WHERE server_id=? and member_id=? AND (type = ? or type = ? or type = ? or type = ?)"
-                cursor.execute(sql, data) # DATA同上
+                sql = "SELECT type, week, boss FROM princess_connect_hatsune.knifes WHERE server_id=? and member_id=? AND type >= ? AND type <= ? AND sockpuppet=? limit 0, 1"
+                data = (message.guild.id, message.author.id, Module.define_value.Knife_Type.NORMAL_ENTER.value, Module.define_value.Knife_Type.RESERVED_WAIT.value, sockpuppet)
+                cursor.execute(sql, data) # 檢查是否有進刀
+                row = cursor.fetchone()
                 cursor.close
-                connection.commit()
-                await message.channel.send('第' + str(row[1]) + '週目' + str(row[2]) + '王，已退刀!')
-                await Module.Update.Update(message, message.guild.id) # 更新刀表  
-              else:
-                await message.channel.send('查無正在進行的紀錄')
+                if row:
+                  # 刪除
+                  cursor = connection.cursor(prepared=True)
+                  sql = "DELETE FROM princess_connect_hatsune.knifes WHERE server_id=? and member_id=? AND type>=? AND type<=? AND sockpuppet=?"
+                  cursor.execute(sql, data) # DATA同上
+                  cursor.close
+                  connection.commit()
+                  await message.channel.send('第' + str(row[1]) + '週目' + str(row[2]) + '王，已退刀!')
+                  await Module.Update.Update(message, message.guild.id) # 更新刀表  
+                else:
+                  await message.channel.send('查無正在進行的紀錄')
+
             else:
               await message.channel.send('格式錯誤，應為:\n!c')
           else:
@@ -669,25 +691,28 @@ async def on_message(message):
                 index = int(tokens[1]) - 1 # SQL由0開始
                 # 檢查該刀有無在表中
                 cursor = connection.cursor(prepared=True)
-                sql = "SELECT serial_number, member_id FROM princess_connect_hatsune.knifes WHERE server_id=? AND type = ? order by serial_number LIMIT ?, 1"
+                sql = "SELECT serial_number, member_id, sockpuppet FROM princess_connect_hatsune.knifes WHERE server_id=? AND type = ? order by member_id, sockpuppet, serial_number LIMIT ?, 1"
                 data = (message.guild.id, Module.define_value.Knife_Type.RESERVED.value, index)
                 cursor.execute(sql, data)
                 row = cursor.fetchone()
                 cursor.close
                 if row:
-                  if row[1] == message.author.id:
-                    # 刪除
-                    cursor = connection.cursor(prepared=True)
-                    sql = "DELETE FROM princess_connect_hatsune.knifes WHERE serial_number=?"
-                    data = (row[0],)
-                    cursor.execute(sql, data)
-                    cursor.close
-                    connection.commit()
-                    await message.channel.send('序號{}，補償刀紀錄已移除!'.format(index + 1)) # 給使用者看要加回來
-                    await Module.Update.Update(message, message.guild.id) # 更新刀表  
-                    await Module.report_update.report_update(message, message.guild.id)
-                  else:
-                    await message.channel.send('您非該刀主人喔')
+                  sockpuppet = await Module.find_out_sockpuppet.find_out_sockpuppet(connection, message) # 找分身
+                  if sockpuppet != None:
+                    if row[1] == message.author.id and row[2] == sockpuppet:
+                      # 刪除
+                      cursor = connection.cursor(prepared=True)
+                      sql = "DELETE FROM princess_connect_hatsune.knifes WHERE serial_number=?"
+                      data = (row[0],)
+                      cursor.execute(sql, data)
+                      cursor.close
+                      connection.commit()
+                      await message.channel.send('序號{}，補償刀紀錄已移除!'.format(index + 1)) # 給使用者看要加回來
+                      await Module.Update.Update(message, message.guild.id) # 更新刀表  
+                      await Module.report_update.report_update(message, message.guild.id)
+                    else:
+                      await message.channel.send('您非該刀主人喔')
+
                 else:
                   await message.channel.send('查無該序號紀錄')
               else:
@@ -710,7 +735,7 @@ async def on_message(message):
           cursor.close
           if row:
             cursor = connection.cursor(prepared=True)
-            sql = "SELECT sl_time FROM princess_connect_hatsune.members WHERE server_id=? AND member_id=? limit 0, 1"
+            sql = "SELECT sl_time FROM princess_connect_hatsune.members WHERE server_id=? AND member_id=? AND now_using = '1' limit 0, 1"
             data = (message.guild.id, message.author.id)
             cursor.execute(sql, data) # 認證身分
             row = cursor.fetchone()
@@ -719,7 +744,7 @@ async def on_message(message):
               closest_end_time = Module.get_closest_end_time.get_closest_end_time(datetime.datetime.now())
               if row[0] < closest_end_time:
                 cursor = connection.cursor(prepared=True)
-                sql = "update princess_connect_hatsune.members SET sl_time=? WHERE server_id = ? and member_id = ?"
+                sql = "update princess_connect_hatsune.members SET sl_time=? WHERE server_id = ? and member_id = ? AND now_using = '1'"
                 data = (closest_end_time, message.guild.id, message.author.id)
                 cursor.execute(sql, data)
                 connection.commit()

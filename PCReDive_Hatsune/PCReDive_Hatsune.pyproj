@@ -25,6 +25,7 @@
     <Compile Include="Event\Command.py" />
     <Compile Include="Event\Ready.py" />
     <Compile Include="Event\__init__.py" />
+    <Compile Include="Module\find_out_sockpuppet.py" />
     <Compile Include="Module\auto_clear.py" />
     <Compile Include="Module\check_boss.py" />
     <Compile Include="Module\check_knife_limit.py" />
