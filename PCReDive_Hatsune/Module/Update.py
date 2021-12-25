@@ -29,7 +29,7 @@ async def UpdateEmbed(connection, message, server_id): # 更新刀表
     action_message_id = row[2]
     reserved_message_id = row[3]
     date_now = datetime.datetime.now()
-    closest_end_time = Module.get_closest_end_time.get_closest_day_end(date_now) # 取得當日結束時間 29點00分
+    closest_end_time = Module.get_closest_end_time.get_closest_end_time(date_now) # 取得當日結束時間 29點00分
 
     if action_channel_id:
       embed_msg = Embed(title='當前狀態', color=0xD98B99)

@@ -52,7 +52,7 @@ async def report_update(message ,server_id):
         else:
           day_name = '(等待下月戰隊戰日期公佈中)'
 
-        closest_end_time = Module.get_closest_end_time.get_closest_day_end(date_now) # 取得當日結束時間 29點00分
+        closest_end_time = Module.get_closest_end_time.get_closest_end_time(date_now) # 取得當日結束時間 29點00分
 
         embed_msg = Embed(title='戰隊報表', description=day_name ,color=0xF1DEDA)
 

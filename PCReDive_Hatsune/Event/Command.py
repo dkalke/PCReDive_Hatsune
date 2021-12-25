@@ -525,7 +525,7 @@ async def on_message(message):
             row = cursor.fetchone()
             if row:
               # 修改SL時間
-              closest_end_time = Module.get_closest_end_time.get_closest_day_end(datetime.datetime.now())
+              closest_end_time = Module.get_closest_end_time.get_closest_end_time(datetime.datetime.now())
               if row[0] < closest_end_time:
                 cursor = connection.cursor(prepared=True)
                 sql = "update princess_connect_hatsune.members SET sl_time=? WHERE server_id = ? and member_id = ?"
