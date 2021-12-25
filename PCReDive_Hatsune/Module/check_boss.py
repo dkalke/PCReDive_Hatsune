@@ -17,13 +17,14 @@ def Check_boss(connection, message, server_id, week, boss):
     sql = "\
       SELECT SUM(damage) FROM princess_connect_hatsune.knifes \
       WHERE server_id = ? \
-      AND type <> ? \
+      AND type = ? \
+      AND type = ? \
       AND week = ? \
       AND boss = ? \
       AND update_time >= ? \
       AND update_time < ? \
     "
-    data = (server_id, Module.define_value.Knife_Type.RESERVED.value, week, boss, start_time, end_time)
+    data = (server_id, Module.define_value.Knife_Type.NORMAL.value, Module.define_value.Knife_Type.ADDITIONAL.value, week, boss, start_time, end_time)
     cursor.execute(sql, data)
     row = cursor.fetchone()
     cursor.close()
