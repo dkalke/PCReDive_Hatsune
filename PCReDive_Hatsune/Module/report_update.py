@@ -50,7 +50,7 @@ async def report_update(message ,server_id):
         cursor = connection.cursor(prepared=True)
         # 抓出正刀
         sql = "\
-          SELECT member_id, sl_time, knife_limit, sockpuppet, \
+          SELECT member_id, sl_time, sockpuppet, \
           (SELECT COUNT(*) FROM princess_connect_hatsune.knifes k WHERE k.server_id = m.server_id AND k.member_id = m.member_id AND k.sockpuppet = m.sockpuppet AND k.type = ? AND k.update_time > ? AND k.update_time < ? ) AS normal_times, \
           (SELECT COUNT(*) FROM princess_connect_hatsune.knifes k WHERE k.server_id = m.server_id AND k.member_id = m.member_id AND k.sockpuppet = m.sockpuppet AND k.type = ? AND k.update_time > ? AND k.update_time < ? ) AS revered_times \
           FROM princess_connect_hatsune.members m \
@@ -68,10 +68,9 @@ async def report_update(message ,server_id):
         while row:
           member_id=row[0]
           sl_time=row[1]
-          knife_limit = row[2]
-          sockpuppet = row[3]
-          normal_times = row[4]
-          revered_times = row[5]
+          sockpuppet = row[2]
+          normal_times = row[3]
+          revered_times = row[4]
 
           # 是否有SL?
           if sl_time >= end_time:
@@ -80,8 +79,8 @@ async def report_update(message ,server_id):
             sl_time = 'N'
             
           member_name = await Name_manager.get_nick_name(message, member_id)
-          msg = msg + '（{}）　{}正{}補　{}　{}-{}\n'.format(Module.half_string_to_full.half_string_to_full('{:>02d}'.format(count)), Module.half_string_to_full.half_string_to_full(str(knife_limit - normal_times)), Module.half_string_to_full.half_string_to_full(str(revered_times)),Module.half_string_to_full.half_string_to_full(sl_time), Module.half_string_to_full.half_string_to_full(str(sockpuppet)), member_name) 
-          normal_total += knife_limit - normal_times
+          msg = msg + '（{}）　{}正{}補　{}　{}-{}\n'.format(Module.half_string_to_full.half_string_to_full('{:>02d}'.format(count)), Module.half_string_to_full.half_string_to_full(str(3 - normal_times)), Module.half_string_to_full.half_string_to_full(str(revered_times)),Module.half_string_to_full.half_string_to_full(sl_time), Module.half_string_to_full.half_string_to_full(str(sockpuppet)), member_name) 
+          normal_total += 3 - normal_times
           reversed_total += revered_times
           count = count + 1
           row = cursor.fetchone()
