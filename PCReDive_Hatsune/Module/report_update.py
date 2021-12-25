@@ -80,8 +80,8 @@ async def report_update(message ,server_id):
             
           member_name = await Name_manager.get_nick_name(message, member_id)
           msg = msg + '（{}）　{}正{}補　{}　{}\n'.format(Module.half_string_to_full.half_string_to_full('{:>02d}'.format(count)), Module.half_string_to_full.half_string_to_full(str(knife_limit - normal_times)), Module.half_string_to_full.half_string_to_full(str(revered_times)),Module.half_string_to_full.half_string_to_full(sl_time), member_name) 
-          normal_total = normal_total + normal_times
-          reversed_total = reversed_total + revered_times
+          normal_total += knife_limit - normal_times
+          reversed_total += revered_times
           count = count + 1
           row = cursor.fetchone()
 
