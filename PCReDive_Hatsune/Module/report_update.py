@@ -25,51 +25,41 @@ async def report_update(message ,server_id):
         # 取得戰隊戰日期
         date_now = datetime.datetime.now()
         day_name = ''
-        fetch_start = None
-        fetch_end = None
+
         if date_now < Module.define_value.BATTLE_DAY[0]:
           day_name = '(尚未開戰)'
         elif date_now < Module.define_value.BATTLE_DAY[1]:
           day_name = '戰隊戰第1天'
-          fetch_start = Module.define_value.BATTLE_DAY[0]
-          fetch_end = Module.define_value.BATTLE_DAY[1]
         elif date_now < Module.define_value.BATTLE_DAY[2]:
           day_name = '戰隊戰第2天'
-          fetch_start = Module.define_value.BATTLE_DAY[1]
-          fetch_end = Module.define_value.BATTLE_DAY[2]
         elif date_now < Module.define_value.BATTLE_DAY[3]:
           day_name = '戰隊戰第3天'
-          fetch_start = Module.define_value.BATTLE_DAY[2]
-          fetch_end = Module.define_value.BATTLE_DAY[3]
         elif date_now < Module.define_value.BATTLE_DAY[4]:
           day_name = '戰隊戰第4天'
-          fetch_start = Module.define_value.BATTLE_DAY[3]
-          fetch_end = Module.define_value.BATTLE_DAY[4]
         elif date_now < Module.define_value.BATTLE_DAY[4]:
           day_name = '戰隊戰第5天'
-          fetch_start = Module.define_value.BATTLE_DAY[4]
-          fetch_end = Module.define_value.BATTLE_DAY[5]
         else:
           day_name = '(等待下月戰隊戰日期公佈中)'
 
-        closest_end_time = Module.get_closest_end_time.get_closest_end_time(date_now) # 取得當日結束時間 29點00分
-
+        end_time = Module.get_closest_end_time.get_closest_end_time(date_now) # 取得當日結束時間 29點00分
+        start_time = end_time - datetime.timedelta(days=1)
         embed_msg = Embed(title='戰隊報表', description=day_name ,color=0xF1DEDA)
-
-
 
         # 列出序號、成員名稱、剩餘正刀刀數、剩餘補償刀數
         cursor = connection.cursor(prepared=True)
         # 抓出正刀
         sql = "\
           SELECT member_id, sl_time , \
-          (SELECT COUNT(*) FROM princess_connect_hatsune.knifes k WHERE k.member_id = m.member_id AND k.`type` = ?) AS normal_times, \
-          (SELECT COUNT(*) FROM princess_connect_hatsune.knifes k WHERE k.member_id = m.member_id AND k.`type` = ?) AS addtional_times, \
-          (SELECT COUNT(*) FROM princess_connect_hatsune.knifes k WHERE k.member_id = m.member_id AND k.`type` = ?) AS revered_times \
+          (SELECT COUNT(*) FROM princess_connect_hatsune.knifes k WHERE k.member_id = m.member_id AND k.`type` = ? AND k.update_time > ? AND k.update_time < ? ) AS normal_times, \
+          (SELECT COUNT(*) FROM princess_connect_hatsune.knifes k WHERE k.member_id = m.member_id AND k.`type` = ? AND k.update_time > ? AND k.update_time < ? ) AS addtional_times, \
+          (SELECT COUNT(*) FROM princess_connect_hatsune.knifes k WHERE k.member_id = m.member_id AND k.`type` = ? AND k.update_time > ? AND k.update_time < ? ) AS revered_times \
           FROM princess_connect_hatsune.members m \
           WHERE server_id = ? \
           ORDER BY m.member_id"
-        data = (Module.define_value.Knife_Type.NORMAL.value, Module.define_value.Knife_Type.ADDITIONAL.value, Module.define_value.Knife_Type.RESERVED.value, server_id)
+        data = (Module.define_value.Knife_Type.NORMAL.value, start_time, end_time, 
+                Module.define_value.Knife_Type.ADDITIONAL.value, start_time, end_time, 
+                Module.define_value.Knife_Type.RESERVED.value, start_time, end_time, 
+                server_id)
         cursor.execute(sql, data)
         row = cursor.fetchone()
         msg = ''
@@ -85,7 +75,7 @@ async def report_update(message ,server_id):
           revered_times = row[4]
 
           # 是否有SL?
-          if sl_time >= closest_end_time:
+          if sl_time >= end_time:
             sl_time = '[閃退已用] '
           else:
             sl_time = '[閃退未用] '
