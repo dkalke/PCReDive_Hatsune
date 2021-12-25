@@ -80,7 +80,10 @@ async def UpdateEmbed(connection, message, server_id): # 更新刀表
                 title_msg[j-1] = '**' + str(i) + '**週**' + str(j) + '**王(**'+ str(Module.define_value.BOSS_HP[week_stage][j-1] - temp_damage) + '**/**' + str(Module.define_value.BOSS_HP[week_stage][j-1]) +'**)\n'
                 # 刀表SQL
                 cursor = connection.cursor(prepared=True)
-                sql = "SELECT a.member_id, type, reserved_time, damage, comment, sl_time FROM princess_connect_hatsune.knifes a left join princess_connect_hatsune.members b ON a.member_id=b.member_id AND a.server_id=b.server_id WHERE a.server_id = ? and week = ? and boss = ? order by a.serial_number"
+                sql = "\
+                  SELECT a.member_id, type, reserved_time, damage, comment, sl_time, a.sockpuppet FROM princess_connect_hatsune.knifes a \
+                  left join princess_connect_hatsune.members b ON a.server_id=b.server_id AND a.member_id=b.member_id AND a.sockpuppet=b.sockpuppet \
+                  WHERE a.server_id = ? and week = ? and boss = ? order by a.serial_number"
                 data = (server_id, i ,j)
                 cursor.execute(sql, data)
                 row = cursor.fetchone()
@@ -94,6 +97,7 @@ async def UpdateEmbed(connection, message, server_id): # 更新刀表
                   damage = row[3]
                   comment = row[4]
                   sl_time = row[5]
+                  sockpuppet = row[6]
 
                   if sl_time >= closest_end_time:
                     sl_time = '[無閃] '
@@ -102,11 +106,11 @@ async def UpdateEmbed(connection, message, server_id): # 更新刀表
 
                   # 依照刀的狀態決定輸出樣式
                   if type == Module.define_value.Knife_Type.NORMAL_ENTER.value or type == Module.define_value.Knife_Type.RESERVED_ENTER.value:
-                    kinfe_msg[j-1] = kinfe_msg[j-1] + '　{' +str(index) + '} [進行中]' + sl_time + nick_name + '\n'
+                    kinfe_msg[j-1] = kinfe_msg[j-1] + '　{' +str(index) + '} [進行中]' + sl_time + str(sockpuppet) + '-' + nick_name + '\n'
                   elif type == Module.define_value.Knife_Type.NORMAL_WAIT.value or type == Module.define_value.Knife_Type.RESERVED_WAIT.value:
-                    kinfe_msg[j-1] = kinfe_msg[j-1] + '　{' +str(index) + '} [等待中]' + sl_time + nick_name + '\n　　' + '傷害' + str(damage) + '，剩餘秒數' + str(reserved_time) + '，' + comment + '\n'
+                    kinfe_msg[j-1] = kinfe_msg[j-1] + '　{' +str(index) + '} [等待中]' + sl_time + str(sockpuppet) + '-' + nick_name + '\n　　' + '傷害' + str(damage) + '，剩餘秒數' + str(reserved_time) + '，' + comment + '\n'
                   elif type == Module.define_value.Knife_Type.NORMAL.value or type == Module.define_value.Knife_Type.ADDITIONAL.value:
-                    kinfe_msg[j-1] = kinfe_msg[j-1] + '　{' +str(index) + '} [已結算]' + sl_time + nick_name + '\n　　' + '傷害' + str(damage) + '\n'
+                    kinfe_msg[j-1] = kinfe_msg[j-1] + '　{' +str(index) + '} [已結算]' + sl_time + str(sockpuppet) + '-' + nick_name + '\n　　' + '傷害' + str(damage) + '\n'
                   elif type == Module.define_value.Knife_Type.RESERVED.value:
                     pass
 
@@ -143,7 +147,7 @@ async def UpdateEmbed(connection, message, server_id): # 更新刀表
         # 保留刀部分
         # 刀表SQL
         cursor = connection.cursor(prepared=True)
-        sql = "SELECT member_id, comment FROM princess_connect_hatsune.knifes WHERE server_id = ? and type = ? order by serial_number"
+        sql = "SELECT member_id, comment, sockpuppet FROM princess_connect_hatsune.knifes WHERE server_id = ? and type = ? order by member_id, sockpuppet, serial_number"
         data = (server_id, Module.define_value.Knife_Type.RESERVED.value)
         cursor.execute(sql, data)
         msg = ''
@@ -152,7 +156,7 @@ async def UpdateEmbed(connection, message, server_id): # 更新刀表
         while row:  
           # {index} nickname\tcomment\n
           name = await Name_manager.get_nick_name(message, row[0])
-          msg = msg + '{' +str(index) + '} ' + name + '\n　' + row[1] + '\n'
+          msg = msg + '{' +str(index) + '} ' + str(row[2]) + '-' + name + '\n　' + row[1] + '\n'
           index = index + 1
           row = cursor.fetchone()
         cursor.close
