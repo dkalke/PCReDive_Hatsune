@@ -16,7 +16,7 @@ import Name_manager
 import Module.Update
 import Module.report_update
 #import Module.Offset_manager
-#import Module.check_week
+import Module.check_week
 import Module.check_boss
 import Module.define_value
 import Module.get_closest_end_time
@@ -238,12 +238,13 @@ async def on_message(message):
         connection = await Module.DB_control.OpenConnection(message)
         if connection:
           cursor = connection.cursor(prepared=True)
-          sql = "SELECT sign_channel_id FROM princess_connect_hatsune.group WHERE server_id=? AND sign_channel_id=? limit 0, 1"
+          sql = "SELECT now_week FROM princess_connect_hatsune.group WHERE server_id=? AND sign_channel_id=? limit 0, 1"
           data = (message.guild.id, message.channel.id)
           cursor.execute(sql, data) # 認證身分
           row = cursor.fetchone()
           cursor.close
           if row:
+            main_week = int(row[0])
             if len(tokens) == 4:
               if tokens[1].isdigit() and tokens[2].isdigit() and tokens[3].isdigit():
                 week = int(tokens[1])
@@ -260,28 +261,31 @@ async def on_message(message):
                 else:
                   pass
                   
-                if not type==None:
-                  if Module.check_boss.Check_boss(boss):
-                    cursor = connection.cursor(prepared=True)
-                    sql = "SELECT type FROM princess_connect_hatsune.knifes WHERE server_id=? and member_id=? AND (type = ? or type = ? or type = ? or type = ?) limit 0, 1"
-                    data = (message.guild.id, message.author.id, Module.define_value.Knife_Type.NORMAL_ENTER.value, Module.define_value.Knife_Type.RESERVED_ENTER.value, Module.define_value.Knife_Type.NORMAL_WAIT.value, Module.define_value.Knife_Type.RESERVED_WAIT.value)
-                    cursor.execute(sql, data) # 檢查是否有進刀
-                    row = cursor.fetchone()
-                    cursor.close
-                    if not row:
-                      # 新增刀
+                if not type == None:
+                  if Module.check_week.Check_week(main_week, week):
+                    if Module.check_boss.Check_boss(boss):
                       cursor = connection.cursor(prepared=True)
-                      sql = "INSERT INTO princess_connect_hatsune.knifes (server_id, member_id, type, week, boss) VALUES (?, ?, ?, ?, ?)"
-                      data = (message.guild.id, message.author.id, type ,week, boss)
-                      cursor.execute(sql, data)
+                      sql = "SELECT type FROM princess_connect_hatsune.knifes WHERE server_id=? and member_id=? AND (type = ? or type = ? or type = ? or type = ?) limit 0, 1"
+                      data = (message.guild.id, message.author.id, Module.define_value.Knife_Type.NORMAL_ENTER.value, Module.define_value.Knife_Type.RESERVED_ENTER.value, Module.define_value.Knife_Type.NORMAL_WAIT.value, Module.define_value.Knife_Type.RESERVED_WAIT.value)
+                      cursor.execute(sql, data) # 檢查是否有進刀
+                      row = cursor.fetchone()
                       cursor.close
-                      connection.commit()
-                      await message.channel.send('第' + str(week) + '週目' + str(boss) + '王，' + type_description + '已進刀!')
-                      await Module.Update.Update(message, message.guild.id) # 更新刀表  
+                      if not row:
+                        # 新增刀
+                        cursor = connection.cursor(prepared=True)
+                        sql = "INSERT INTO princess_connect_hatsune.knifes (server_id, member_id, type, week, boss) VALUES (?, ?, ?, ?, ?)"
+                        data = (message.guild.id, message.author.id, type ,week, boss)
+                        cursor.execute(sql, data)
+                        cursor.close
+                        connection.commit()
+                        await message.channel.send('第' + str(week) + '週目' + str(boss) + '王，' + type_description + '已進刀!')
+                        await Module.Update.Update(message, message.guild.id) # 更新刀表  
+                      else:
+                        await message.channel.send('已有進刀紀錄，請完成該刀後再次嘗試!')
                     else:
-                      await message.channel.send('已有進刀紀錄，請完成該刀後再次嘗試!')
+                      await message.channel.send('該王不存在喔!')
                   else:
-                    await message.channel.send('該王不存在喔!')
+                    await message.channel.send('該週目不存在喔!')
                 else:
                   await message.channel.send('類型錯誤，0:正刀、1:補償刀。')
               else:
