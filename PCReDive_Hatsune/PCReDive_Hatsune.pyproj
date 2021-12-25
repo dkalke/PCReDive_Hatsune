@@ -27,6 +27,7 @@
     <Compile Include="Event\__init__.py" />
     <Compile Include="Module\auto_clear.py" />
     <Compile Include="Module\check_boss.py" />
+    <Compile Include="Module\check_knife_limit.py" />
     <Compile Include="Module\check_week.py" />
     <Compile Include="Module\DB_control.py" />
     <Compile Include="Module\define_value.py" />

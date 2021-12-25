@@ -20,6 +20,7 @@ import Module.check_week
 import Module.check_boss
 import Module.define_value
 import Module.get_closest_end_time
+import Module.check_knife_limit
 
 
 @client.event
@@ -264,24 +265,27 @@ async def on_message(message):
                 if not type == None:
                   if Module.check_week.Check_week(main_week, week):
                     if Module.check_boss.Check_boss(boss):
-                      cursor = connection.cursor(prepared=True)
-                      sql = "SELECT type FROM princess_connect_hatsune.knifes WHERE server_id=? and member_id=? AND (type = ? or type = ? or type = ? or type = ?) limit 0, 1"
-                      data = (message.guild.id, message.author.id, Module.define_value.Knife_Type.NORMAL_ENTER.value, Module.define_value.Knife_Type.RESERVED_ENTER.value, Module.define_value.Knife_Type.NORMAL_WAIT.value, Module.define_value.Knife_Type.RESERVED_WAIT.value)
-                      cursor.execute(sql, data) # 檢查是否有進刀
-                      row = cursor.fetchone()
-                      cursor.close
-                      if not row:
-                        # 新增刀
+                      if type == Module.define_value.Knife_Type.RESERVED_ENTER.value or await Module.check_knife_limit.check_knife_limit(connection, message, message.guild.id, message.author.id):
                         cursor = connection.cursor(prepared=True)
-                        sql = "INSERT INTO princess_connect_hatsune.knifes (server_id, member_id, type, week, boss) VALUES (?, ?, ?, ?, ?)"
-                        data = (message.guild.id, message.author.id, type ,week, boss)
-                        cursor.execute(sql, data)
+                        sql = "SELECT type FROM princess_connect_hatsune.knifes WHERE server_id=? and member_id=? AND (type = ? or type = ? or type = ? or type = ?) limit 0, 1"
+                        data = (message.guild.id, message.author.id, Module.define_value.Knife_Type.NORMAL_ENTER.value, Module.define_value.Knife_Type.RESERVED_ENTER.value, Module.define_value.Knife_Type.NORMAL_WAIT.value, Module.define_value.Knife_Type.RESERVED_WAIT.value)
+                        cursor.execute(sql, data) # 檢查是否有進刀
+                        row = cursor.fetchone()
                         cursor.close
-                        connection.commit()
-                        await message.channel.send('第' + str(week) + '週目' + str(boss) + '王，' + type_description + '已進刀!')
-                        await Module.Update.Update(message, message.guild.id) # 更新刀表  
+                        if not row:
+                          # 新增刀
+                          cursor = connection.cursor(prepared=True)
+                          sql = "INSERT INTO princess_connect_hatsune.knifes (server_id, member_id, type, week, boss) VALUES (?, ?, ?, ?, ?)"
+                          data = (message.guild.id, message.author.id, type ,week, boss)
+                          cursor.execute(sql, data)
+                          cursor.close
+                          connection.commit()
+                          await message.channel.send('第' + str(week) + '週目' + str(boss) + '王，' + type_description + '已進刀!')
+                          await Module.Update.Update(message, message.guild.id) # 更新刀表  
+                        else:
+                          await message.channel.send('已有進刀紀錄，請完成該刀後再次嘗試!')
                       else:
-                        await message.channel.send('已有進刀紀錄，請完成該刀後再次嘗試!')
+                        await message.channel.send('已達今日出刀上限，感謝您的付出!')
                     else:
                       await message.channel.send('該王不存在喔!')
                   else:
