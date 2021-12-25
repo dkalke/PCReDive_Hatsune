@@ -49,8 +49,8 @@ async def UpdateEmbed(connection, message, server_id): # 更新刀表
             group BY server_id, week, boss) as temp_damage FROM princess_connect_hatsune.knifes\
             WHERE server_id = ? and week = ? and boss = ? and type >= ? and type <= ? \
             group BY server_id, week, boss"
-          data = (server_id, i ,j, Module.define_value.Knife_Type.NORMAL_ENTER.value, Module.define_value.Knife_Type.ADDITIONAL.value, \
-            server_id, i ,j, Module.define_value.Knife_Type.NORMAL.value, Module.define_value.Knife_Type.ADDITIONAL.value)
+          data = (server_id, i ,j, Module.define_value.Knife_Type.NORMAL.value, Module.define_value.Knife_Type.ADDITIONAL.value, \
+            server_id, i ,j, Module.define_value.Knife_Type.NORMAL_ENTER.value, Module.define_value.Knife_Type.ADDITIONAL.value)
           cursor.execute(sql, data)
           row = cursor.fetchone()
 
@@ -61,10 +61,10 @@ async def UpdateEmbed(connection, message, server_id): # 更新刀表
           else:
             temp_damage = 0
             if row[3]:
-              temp_damage = int(row[3])
-            real_damage = 0
+              real_damage = int(row[3])
             if row[4]:
-              real_damage = int(row[4])
+              temp_damage = int(row[4])
+            real_damage = 0
 
             if real_damage >= Module.define_value.BOSS_HP[week_stage][j-1]: # 王死
               title_msg = '**' + str(j) + '**王(**0**/**' + str(Module.define_value.BOSS_HP[week_stage][j-1]) +'**)\n'
@@ -74,7 +74,7 @@ async def UpdateEmbed(connection, message, server_id): # 更新刀表
               title_msg = '**' + str(j) + '**王(**'+ str(Module.define_value.BOSS_HP[week_stage][j-1] - temp_damage) + '**/**' + str(Module.define_value.BOSS_HP[week_stage][j-1]) +'**)\n'
               # 刀表SQL
               cursor = connection.cursor(prepared=True)
-              sql = "SELECT a.member_id, type, reserved_time, damage, comment, sl_time FROM princess_connect_hatsune.knifes a left join princess_connect_hatsune.members b ON a.member_id=b.member_id WHERE a.server_id = ? and week = ? and boss = ? order by a.serial_number"
+              sql = "SELECT a.member_id, type, reserved_time, damage, comment, sl_time FROM princess_connect_hatsune.knifes a left join princess_connect_hatsune.members b ON a.member_id=b.member_id AND a.server_id=b.server_id WHERE a.server_id = ? and week = ? and boss = ? order by a.serial_number"
               data = (server_id, i ,j)
               cursor.execute(sql, data)
               row = cursor.fetchone()
