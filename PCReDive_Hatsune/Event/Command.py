@@ -47,7 +47,7 @@ async def on_message(message):
           row = cursor.fetchone()
           cursor.close
 
-          # 查無該戰隊資料，新增一筆，預設1週目1王，除當前週目外，可往後預約4週目
+          # 查無該戰隊資料，新增一筆資料
           if not row: 
             cursor = connection.cursor(prepared=True)
             sql = "INSERT INTO princess_connect_hatsune.group (server_id, now_week) VALUES (?, ?)"
@@ -172,6 +172,65 @@ async def on_message(message):
             await Module.DB_control.CloseConnection(connection, message)
         else:
           await message.channel.send('!add_member [成員1] [成員2] ... [成員n]')
+        connection = await Module.DB_control.OpenConnection(message)
+
+      #!del_member [成員1] [成員2] ...
+      elif tokens[0] == '!del_member':
+
+        if len(tokens) >= 2:
+          connection = await Module.DB_control.OpenConnection(message)
+          if connection:
+            # 檢查成員是否存在
+            legal_members = ''
+            illegal_members = ''
+            del_member_list = []
+            for member in message.mentions:
+              cursor = connection.cursor(prepared=True)
+              sql = "SELECT * FROM princess_connect_hatsune.members WHERE server_id=? and member_id=? LIMIT 0, 1"
+              data = (message.guild.id, member.id)
+              cursor.execute(sql, data)
+              row = cursor.fetchone()
+              cursor.close
+              if row:
+                legal_members = legal_members + member.mention + ' '
+                del_member_list.append(member)
+              else:
+                illegal_members = illegal_members + member.mention + ' '
+                    
+            for member in del_member_list:
+              # 刪除報刀資訊
+              cursor = connection.cursor(prepared=True)
+              sql = "DELETE FROM princess_connect_hatsune.knifes WHERE server_id = ? AND member_id = ?"
+              data = (message.guild.id, member.id)
+              cursor.execute(sql, data)
+              cursor.close
+
+              # 刪除成員資訊
+              cursor = connection.cursor(prepared=True)
+              sql = "DELETE FROM princess_connect_hatsune.members WHERE server_id = ? AND member_id = ?"
+              data = (message.guild.id, member.id)
+              cursor.execute(sql, data)
+              cursor.close
+              
+            connection.commit() # 資料庫存檔
+            connection.close
+
+
+            # 列出成員名單
+            if illegal_members == '':
+              if legal_members == '':
+                await message.channel.send('成員無更動')
+              else:
+                await message.channel.send('下列人員已刪除:\n' + legal_members )
+            else:
+              if legal_members == '':
+                await message.channel.send('下列人員不存在:\n' + illegal_members )
+              else:
+                await message.channel.send('下列人員已刪除:\n' + legal_members + '\n下列人員不存在:\n' + illegal_members )
+            await Module.report_update.report_update(message, message.guild.id)
+            await Module.DB_control.CloseConnection(connection, message)
+        else:
+          await message.channel.send('!del_member [成員1] [成員2] ... [成員n]')
         connection = await Module.DB_control.OpenConnection(message)
 
       #!1 [week] [boss] [method]  0 = normal  1 = addtional
