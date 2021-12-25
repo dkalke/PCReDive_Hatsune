@@ -17,8 +17,7 @@ def Check_boss(connection, message, server_id, week, boss):
     sql = "\
       SELECT SUM(damage) FROM princess_connect_hatsune.knifes \
       WHERE server_id = ? \
-      AND type = ? \
-      AND type = ? \
+      AND ( type = ? OR type = ? ) \
       AND week = ? \
       AND boss = ? \
       AND update_time >= ? \
