@@ -267,45 +267,6 @@ async def on_message(message):
           await message.channel.send('!del_member [成員1] [成員2] ... [成員n]')
         connection = await Module.DB_control.OpenConnection(message)
 
-      #!set_member [成員] [刀數] ...
-      elif tokens[0] == '!set_member':
-        if len(tokens) == 3:
-          connection = await Module.DB_control.OpenConnection(message)
-          if connection:
-            if len(message.mentions)==1:
-              if tokens[2].isdigit():
-                limit_knife_number = int(tokens[2])
-                # 檢查成員是否存在
-                cursor = connection.cursor(prepared=True)
-                sql = "SELECT * FROM princess_connect_hatsune.members WHERE server_id=? and member_id=? LIMIT 0, 1"
-                data = (message.guild.id, message.mentions[0].id)
-                cursor.execute(sql, data)
-                row = cursor.fetchone()
-                cursor.close
-                if row:
-                  # UPDATE
-                  cursor = connection.cursor(prepared=True)
-                  sql = "UPDATE princess_connect_hatsune.members SET knife_limit = ? WHERE server_id=? and member_id=?"
-                  data = (limit_knife_number, message.guild.id, message.mentions[0].id)
-                  cursor.execute(sql, data)
-                  cursor.close
-                  connection.commit() # 資料庫存檔
-
-                  nick_name = await Name_manager.get_nick_name(message, message.mentions[0].id) # 取得DC暱稱
-                  await message.channel.send('成員{}可出刀數已更改為{}刀'.format(nick_name, limit_knife_number))
-                  await Module.report_update.report_update(message, message.guild.id)
-                else:
-                  await message.channel.send('該成員不在此戰隊中')
-              else:
-                await message.channel.send('[刀數] 僅能為阿拉伯數字')
-            else:
-              await message.channel.send('[成員] 請tag成員')
-
-            await Module.DB_control.CloseConnection(connection, message)
-
-        else:
-          await message.channel.send('格式錯誤，應為:\n!set_member [成員] [刀數]')
-
       #!add_puppet
       elif tokens[0] == '!add_puppet':
         if len(tokens) == 1:
