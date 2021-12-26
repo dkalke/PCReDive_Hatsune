@@ -637,7 +637,7 @@ async def on_message(message):
             pass #非指定頻道 不反應
           await Module.DB_control.CloseConnection(connection, message)
 
-      #!c 取消補償(也就是退刀)
+      #!c 取消(也就是退刀)
       elif tokens[0] == '!c': # 取消(也就是退刀)
         connection = await Module.DB_control.OpenConnection(message)
         if connection:
