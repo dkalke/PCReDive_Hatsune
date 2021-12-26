@@ -46,6 +46,7 @@ async def UpdateEmbed(connection, message, server_id): # 更新刀表
             kinfe_msg[j-1] = ''
             # 計算該王受到的傷害，只抓正刀與尾刀
             cursor = connection.cursor(prepared=True)
+            # 前面的是總傷害(temp)，後面的是(real)
             sql = \
               "SELECT server_id, boss, week, SUM(damage), \
               (SELECT SUM(damage) FROM princess_connect_hatsune.knifes \
@@ -54,7 +55,7 @@ async def UpdateEmbed(connection, message, server_id): # 更新刀表
               WHERE server_id = ? and week = ? and boss = ? and type >= ? and type <= ? \
               group BY server_id, week, boss"
             data = (server_id, i ,j, Module.define_value.Knife_Type.NORMAL.value, Module.define_value.Knife_Type.ADDITIONAL.value, \
-              server_id, i ,j, Module.define_value.Knife_Type.NORMAL_ENTER.value, Module.define_value.Knife_Type.ADDITIONAL.value)
+                    server_id, i ,j, Module.define_value.Knife_Type.NORMAL_ENTER.value, Module.define_value.Knife_Type.ADDITIONAL.value)
             cursor.execute(sql, data)
             row = cursor.fetchone()
 
@@ -67,9 +68,10 @@ async def UpdateEmbed(connection, message, server_id): # 更新刀表
               temp_damage = 0
               real_damage = 0
               if row[3]:
-                real_damage = int(row[3])
+                temp_damage = int(row[3])
               if row[4]:
-                temp_damage = int(row[4])
+                real_damage = int(row[4])
+              
 
               if real_damage >= Module.define_value.BOSS_HP[week_stage][j-1]: # 王死
                 title_msg[j-1] = '**' + str(i) + '**週**' + str(j) + '**王(**0**/**' + str(Module.define_value.BOSS_HP[week_stage][j-1]) +'**)\n'
