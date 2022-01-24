@@ -122,6 +122,44 @@ async def on_message(message):
             await message.channel.send('尚未註冊')
           await Module.DB_control.CloseConnection(connection, message)
 
+      #!clear
+      elif tokens[0] == '!clear':
+        if len(tokens) == 1:
+          connection = await Module.DB_control.OpenConnection(message)
+          if connection:
+            # 尋找戰隊有無存在
+            cursor = connection.cursor(prepared=True)
+            sql = "select * from princess_connect_hatsune.group where server_id = ?"
+            data = (message.guild.id, )
+            cursor.execute(sql, data)
+            row = cursor.fetchone()
+            cursor.close
+
+            if row: 
+              # 刪除刀表
+              sql = "DELETE FROM princess_connect_hatsune.knifes where server_id = ?"
+              data = (message.guild.id, )
+              cursor.execute(sql)
+              
+              # 重設week到第一週
+              sql = "UPDATE princess_connect_hatsune.group SET now_week='1' where server_id = ?"
+              data = (message.guild.id, )
+              cursor.execute(sql)
+              
+              connection.commit()
+              
+              await Module.Update.Update(message_obj, server_id) # 更新活動表
+              await Module.report_update.report_update(message_obj, server_id) # 更新資訊表
+              
+              await message.channel.send('刀表重置完成!')
+              
+            else:
+              await message.channel.send('戰隊尚未註冊，請使用!init')
+            await Module.DB_control.CloseConnection(connection, message)
+         
+        else:
+          await message.channel.send('格式錯誤，應為:\n!clear')          
+
       #!set_week [週目]
       elif tokens[0] == '!set_week':
         if len(tokens) == 2:
