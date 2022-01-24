@@ -139,20 +139,18 @@ async def on_message(message):
               # 刪除刀表
               sql = "DELETE FROM princess_connect_hatsune.knifes where server_id = ?"
               data = (message.guild.id, )
-              cursor.execute(sql)
+              cursor.execute(sql, data)
               
               # 重設week到第一週
               sql = "UPDATE princess_connect_hatsune.group SET now_week='1' where server_id = ?"
               data = (message.guild.id, )
-              cursor.execute(sql)
+              cursor.execute(sql, data)
               
               connection.commit()
-              
-              await Module.Update.Update(message_obj, server_id) # 更新活動表
-              await Module.report_update.report_update(message_obj, server_id) # 更新資訊表
-              
-              await message.channel.send('刀表重置完成!')
-              
+              msg_boj = await message.channel.send('刀表重置中!')
+              await Module.Update.Update(message, message.guild.id) # 更新活動表
+              await Module.report_update.report_update(message, message.guild.id) # 更新資訊表
+              await msg_boj.edit(content = '刀表重置完成!')
             else:
               await message.channel.send('戰隊尚未註冊，請使用!init')
             await Module.DB_control.CloseConnection(connection, message)
