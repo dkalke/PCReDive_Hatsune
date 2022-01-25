@@ -42,9 +42,9 @@ for i in range(0,5):
     BOSS_HP[i][j] = BOSS_HP[i][j]*10000
 
 # 戰隊戰日期
-this_year = 2021
-this_month = 12
-this_day = 22
+this_year = 2022
+this_month = 1
+this_day = 27
 BATTLE_DAY=[\
   datetime.datetime(year=this_year, month=this_month, day=this_day, hour=5, minute=0, second=0),\
   datetime.datetime(year=this_year, month=this_month, day=this_day, hour=5, minute=0, second=0) + datetime.timedelta(days=1),\
