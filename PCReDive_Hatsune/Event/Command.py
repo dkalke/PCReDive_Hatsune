@@ -571,7 +571,7 @@ async def on_message(message):
               else:
                 await message.channel.send('[剩餘秒數] [damage]只能為阿拉伯數字')
             else:
-              await message.channel.send('格式錯誤，應為:\n!2 [剩餘秒數] [damage] [comment]')
+              await message.channel.send('格式錯誤，應為:\n!2 [剩餘秒數] [damage(萬)] [comment]')
           else:
             pass #非指定頻道 不反應
           await Module.DB_control.CloseConnection(connection, message)
@@ -631,7 +631,7 @@ async def on_message(message):
               else:
                 await message.channel.send('類型錯誤，0:沒領到補償刀、1:有領到補償刀。')
             else:
-              await message.channel.send('格式錯誤，應為:\n!3 [實際造成傷害]')
+              await message.channel.send('格式錯誤，應為:\n!3 [實際造成傷害(萬)]')
           else:
             pass #非指定頻道 不反應
           await Module.DB_control.CloseConnection(connection, message)
