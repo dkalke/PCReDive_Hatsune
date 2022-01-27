@@ -629,7 +629,7 @@ async def on_message(message):
                     await message.channel.send('請先卡秒!')
 
               else:
-                await message.channel.send('類型錯誤，0:沒領到補償刀、1:有領到補償刀。')
+                await message.channel.send('[實際造成傷害(萬)]請使用阿拉伯數字。')
             else:
               await message.channel.send('格式錯誤，應為:\n!3 [實際造成傷害(萬)]')
           else:
